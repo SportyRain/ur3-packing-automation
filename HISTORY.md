@@ -41,13 +41,24 @@
 - 서로 다른 작업 위치 사이 장거리 이동을 HOME 경유 `MOVEJ`로 변경
 - 작업점 주변에만 짧은 `MOVEL` 사용
 
-### V7 (현재)
+### V7
 
 - HOME + 각 작업점 TCP/joint posture 영구 저장 구조
 - 좌표가 약 ±100 mm 변경되더라도 해당 포인트만 재티칭 가능하도록 설계
 - 현재 pose 기준 approach IK를 다시 계산
 - 기존 로봇 설치에서 사용하던 `Box_Gripper1` TCP / Payload 0.5 kg 정보를 설치 파일에 반영
-- 기존 Physical AI 저장소와 완전히 분리하여 독립 프로젝트로 관리
+- 실제 UR3 CB3 / PolyScope 3.15.8 팬던트에서 컴파일 시 `getj()` 함수 미정의 오류 확인
+- 상태: `COMPILE_BLOCKED`
+
+### V8 (현재)
+
+- V7의 모든 `getj()` 호출을 공식 URScript 함수 `get_actual_joint_positions()`로 수정
+- HOME 및 7개 작업점의 실제 6축 관절 위치 저장 방식 유지
+- HOME 경유 MOVEJ / 작업점 주변 MOVEL 구조 유지
+- `get_inverse_kin_has_solution()`은 PolyScope 3.15에서 추가된 함수이므로 유지
+- V8 script patch 상태: `VERIFIED`
+- 실제 팬던트 parser acceptance: `NOT_VERIFIED`
+- 실제 모션: `NOT_VERIFIED`
 
 ## 주의
 
