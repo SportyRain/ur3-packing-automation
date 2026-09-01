@@ -1,0 +1,407 @@
+# UR3 CB3 / PolyScope 3.15.8
+# PACKING V8 - PERSISTENT HOME + JOINT-POSTURE ROUTING
+#
+# Important:
+# - Different stations are NOT connected with a long Cartesian MOVEL.
+# - Long travel uses MOVEJ through a taught HOME joint posture.
+# - Short local work motion only uses MOVEL.
+# - Each taught point stores BOTH TCP pose and actual 6-joint posture.
+# - CB3-compatible joint read: get_actual_joint_positions().
+# - If a point later moves by ~100 mm, modify that point in the teaching menu:
+#   the new TCP pose and the new joint posture seed are saved together.
+#
+# PLC contract:
+# one fresh START -> exactly one physical movement/action -> DONE.
+#
+# Gripper uses STANDARD control-box digital outputs.
+
+MOVEJ_A = 0.60
+MOVEJ_V = 0.30
+MOVEL_A = 0.35
+MOVEL_V = 0.05
+GRIP_DELAY = 0.30
+
+ACTION_NONE = 0
+ACTION_GRIP_OPEN = 1
+ACTION_GRIP_CLOSE = 2
+
+
+def ask_yes(message):
+  return request_boolean_from_primary_client(message)
+end
+
+
+def valid_io(v):
+  return ((v >= 0) and (v <= 7))
+end
+
+
+def validate_io_config():
+  if not valid_io(PACK_DI_POINT_START):
+    return False
+  end
+  if not valid_io(PACK_DO_POINT_DONE):
+    return False
+  end
+  if not valid_io(PACK_DO_GRIP_A):
+    return False
+  end
+  if not valid_io(PACK_DO_GRIP_B):
+    return False
+  end
+
+  if PACK_DO_POINT_DONE == PACK_DO_GRIP_A:
+    return False
+  end
+  if PACK_DO_POINT_DONE == PACK_DO_GRIP_B:
+    return False
+  end
+  if PACK_DO_GRIP_A == PACK_DO_GRIP_B:
+    return False
+  end
+
+  if not ((PACK_GRIPPER_MODE == 1) or (PACK_GRIPPER_MODE == 2)):
+    return False
+  end
+  return True
+end
+
+
+def configure_io():
+  local ok = False
+
+  while not ok:
+    global PACK_DI_POINT_START = request_integer_from_primary_client(
+      "PLC START standard DI [0..7]")
+    global PACK_DO_POINT_DONE = request_integer_from_primary_client(
+      "UR DONE standard DO [0..7]")
+    global PACK_DO_GRIP_A = request_integer_from_primary_client(
+      "Gripper A standard DO [0..7]")
+    global PACK_DO_GRIP_B = request_integer_from_primary_client(
+      "Gripper B standard DO [0..7]")
+    global PACK_GRIPPER_MODE = request_integer_from_primary_client(
+      "Gripper mode: 1=A ON opens, 2=B ON opens")
+
+    ok = validate_io_config()
+    if not ok:
+      popup("Invalid I/O configuration.",
+            title="I/O SETUP ERROR",
+            warning=True,
+            error=True,
+            blocking=True)
+    end
+  end
+
+  global PACK_IO_VALID = True
+end
+
+
+def grip_open():
+  if PACK_GRIPPER_MODE == 1:
+    set_digital_out(PACK_DO_GRIP_A, True)
+    set_digital_out(PACK_DO_GRIP_B, False)
+  else:
+    set_digital_out(PACK_DO_GRIP_A, False)
+    set_digital_out(PACK_DO_GRIP_B, True)
+  end
+  sleep(GRIP_DELAY)
+end
+
+
+def grip_close():
+  if PACK_GRIPPER_MODE == 1:
+    set_digital_out(PACK_DO_GRIP_A, False)
+    set_digital_out(PACK_DO_GRIP_B, True)
+  else:
+    set_digital_out(PACK_DO_GRIP_A, True)
+    set_digital_out(PACK_DO_GRIP_B, False)
+  end
+  sleep(GRIP_DELAY)
+end
+
+
+def teach_current(label):
+  local save_now = False
+
+  popup(str_cat("Move robot to: ", label),
+        title="TEACH",
+        warning=False,
+        error=False,
+        blocking=True)
+
+  freedrive_mode()
+  while not save_now:
+    save_now = request_boolean_from_primary_client(
+      "Save TCP + joint posture? YES=Save / NO=Keep moving")
+  end
+  end_freedrive_mode()
+  sleep(0.20)
+end
+
+
+def teach_home(force_all):
+  local edit = force_all
+  if not force_all:
+    edit = ask_yes("HOME safe posture: YES=Modify / NO=Next")
+  end
+
+  if edit:
+    teach_current("HOME - central safe arm posture")
+    global PACK_HOME_P = get_actual_tcp_pose()
+    global PACK_HOME_Q = get_actual_joint_positions()
+    global PACK_HOME_VALID = True
+  end
+end
+
+
+def teach_points(force_all):
+  local edit = False
+
+  if force_all:
+    edit = True
+  else:
+    edit = ask_yes("1/7 P1 BOX PICK: YES=Modify / NO=Next")
+  end
+  if edit:
+    teach_current("1/7 P1 BOX PICK - SIDE")
+    global PACK_P1_BOX_PICK = get_actual_tcp_pose()
+    global PACK_Q_P1_BOX_PICK = get_actual_joint_positions()
+  end
+
+  if force_all:
+    edit = True
+  else:
+    edit = ask_yes("2/7 P2 BOTTOM HOLD: YES=Modify / NO=Next")
+  end
+  if edit:
+    teach_current("2/7 P2 BOTTOM FOLD HOLD")
+    global PACK_P2_BOTTOM_HOLD = get_actual_tcp_pose()
+    global PACK_Q_P2_BOTTOM_HOLD = get_actual_joint_positions()
+  end
+
+  if force_all:
+    edit = True
+  else:
+    edit = ask_yes("3/7 P3 BOX PLACE: YES=Modify / NO=Next")
+  end
+  if edit:
+    teach_current("3/7 P3 EMPTY BOX PLACE - SIDE")
+    global PACK_P3_BOX_PLACE = get_actual_tcp_pose()
+    global PACK_Q_P3_BOX_PLACE = get_actual_joint_positions()
+  end
+
+  if force_all:
+    edit = True
+  else:
+    edit = ask_yes("4/7 P4 PRODUCT PICK: YES=Modify / NO=Next")
+  end
+  if edit:
+    teach_current("4/7 P4 PRODUCT PICK - TOP")
+    global PACK_P4_PRODUCT_PICK = get_actual_tcp_pose()
+    global PACK_Q_P4_PRODUCT_PICK = get_actual_joint_positions()
+  end
+
+  if force_all:
+    edit = True
+  else:
+    edit = ask_yes("5/7 P3 PRODUCT INSERT: YES=Modify / NO=Next")
+  end
+  if edit:
+    teach_current("5/7 P3 PRODUCT INSERT - TOP")
+    global PACK_P3_PRODUCT_INSERT = get_actual_tcp_pose()
+    global PACK_Q_P3_PRODUCT_INSERT = get_actual_joint_positions()
+  end
+
+  if force_all:
+    edit = True
+  else:
+    edit = ask_yes("6/7 P3 FINISHED BOX PICK: YES=Modify / NO=Next")
+  end
+  if edit:
+    teach_current("6/7 P3 FINISHED BOX PICK - SIDE")
+    global PACK_P3_FIN_PICK = get_actual_tcp_pose()
+    global PACK_Q_P3_FIN_PICK = get_actual_joint_positions()
+  end
+
+  if force_all:
+    edit = True
+  else:
+    edit = ask_yes("7/7 P4 FINISHED BOX PLACE: YES=Modify / NO=Next")
+  end
+  if edit:
+    teach_current("7/7 P4 FINISHED BOX PLACE")
+    global PACK_P4_BOX_PLACE = get_actual_tcp_pose()
+    global PACK_Q_P4_BOX_PLACE = get_actual_joint_positions()
+  end
+
+  global PACK_POINTS_VALID = True
+end
+
+
+def approach_pose(target):
+  return pose_trans(target, p[0,0,-PACK_CLEARANCE,0,0,0])
+end
+
+
+def solve_near(target_pose, posture_seed, label):
+  if not get_inverse_kin_has_solution(target_pose, posture_seed):
+    popup(str_cat("No reachable IK near taught arm posture: ", label),
+          title="MOTION BLOCKED",
+          warning=True,
+          error=True,
+          blocking=True)
+    halt
+  end
+  return get_inverse_kin(target_pose, posture_seed)
+end
+
+
+def wait_fresh_start():
+  while get_digital_in(PACK_DI_POINT_START):
+    sync()
+  end
+  while not get_digital_in(PACK_DI_POINT_START):
+    sync()
+  end
+end
+
+
+def finish_point():
+  set_digital_out(PACK_DO_POINT_DONE, True)
+  while get_digital_in(PACK_DI_POINT_START):
+    sync()
+  end
+  set_digital_out(PACK_DO_POINT_DONE, False)
+end
+
+
+def do_action(action):
+  if action == ACTION_GRIP_OPEN:
+    grip_open()
+  elif action == ACTION_GRIP_CLOSE:
+    grip_close()
+  end
+end
+
+
+def point_movej(q_target, action, label):
+  wait_fresh_start()
+  textmsg("PACK_MOVEJ_START: ", label)
+  movej(q_target, a=MOVEJ_A, v=MOVEJ_V)
+  do_action(action)
+  textmsg("PACK_MOVEJ_DONE: ", label)
+  finish_point()
+end
+
+
+def point_movel(p_target, action, label):
+  wait_fresh_start()
+  textmsg("PACK_MOVEL_START: ", label)
+  movel(p_target, a=MOVEL_A, v=MOVEL_V)
+  do_action(action)
+  textmsg("PACK_MOVEL_DONE: ", label)
+  finish_point()
+end
+
+
+def go_home(label):
+  point_movej(PACK_HOME_Q, ACTION_NONE, label)
+end
+
+
+def run_cycle():
+  local P1_A = approach_pose(PACK_P1_BOX_PICK)
+  local Q1_A = solve_near(P1_A, PACK_Q_P1_BOX_PICK, "P1_APPROACH")
+  local P2_A = approach_pose(PACK_P2_BOTTOM_HOLD)
+  local Q2_A = solve_near(P2_A, PACK_Q_P2_BOTTOM_HOLD, "P2_APPROACH")
+  local P3B_A = approach_pose(PACK_P3_BOX_PLACE)
+  local Q3B_A = solve_near(P3B_A, PACK_Q_P3_BOX_PLACE, "P3_BOX_APPROACH")
+  local P4P_A = approach_pose(PACK_P4_PRODUCT_PICK)
+  local Q4P_A = solve_near(P4P_A, PACK_Q_P4_PRODUCT_PICK, "P4_PRODUCT_APPROACH")
+  local P3I_A = approach_pose(PACK_P3_PRODUCT_INSERT)
+  local Q3I_A = solve_near(P3I_A, PACK_Q_P3_PRODUCT_INSERT, "P3_INSERT_APPROACH")
+  local P3F_A = approach_pose(PACK_P3_FIN_PICK)
+  local Q3F_A = solve_near(P3F_A, PACK_Q_P3_FIN_PICK, "P3_FIN_APPROACH")
+  local P4B_A = approach_pose(PACK_P4_BOX_PLACE)
+  local Q4B_A = solve_near(P4B_A, PACK_Q_P4_BOX_PLACE, "P4_BOX_APPROACH")
+
+  go_home("HOME_START")
+  point_movej(Q1_A, ACTION_NONE, "P1_APPROACH")
+  point_movel(PACK_P1_BOX_PICK, ACTION_GRIP_CLOSE, "P1_PICK")
+  point_movel(P1_A, ACTION_NONE, "P1_RETRACT")
+  go_home("HOME_AFTER_P1")
+  point_movej(Q2_A, ACTION_NONE, "P2_APPROACH")
+  point_movel(PACK_P2_BOTTOM_HOLD, ACTION_NONE, "P2_HOLD")
+  point_movel(P2_A, ACTION_NONE, "P2_RETRACT")
+  go_home("HOME_AFTER_P2")
+  point_movej(Q3B_A, ACTION_NONE, "P3_BOX_APPROACH")
+  point_movel(PACK_P3_BOX_PLACE, ACTION_GRIP_OPEN, "P3_BOX_PLACE")
+  point_movel(P3B_A, ACTION_NONE, "P3_BOX_RETRACT")
+  go_home("HOME_AFTER_P3_BOX")
+  point_movej(Q4P_A, ACTION_NONE, "P4_PRODUCT_APPROACH")
+  point_movel(PACK_P4_PRODUCT_PICK, ACTION_GRIP_CLOSE, "P4_PRODUCT_PICK")
+  point_movel(P4P_A, ACTION_NONE, "P4_PRODUCT_RETRACT")
+  go_home("HOME_AFTER_P4_PRODUCT")
+  point_movej(Q3I_A, ACTION_NONE, "P3_PRODUCT_ABOVE")
+  point_movel(PACK_P3_PRODUCT_INSERT, ACTION_GRIP_OPEN, "P3_PRODUCT_INSERT")
+  point_movel(P3I_A, ACTION_NONE, "P3_LID_BACKOFF")
+  go_home("HOME_AFTER_LID_CLOSE")
+  point_movej(Q3F_A, ACTION_NONE, "P3_FIN_APPROACH")
+  point_movel(PACK_P3_FIN_PICK, ACTION_GRIP_CLOSE, "P3_FIN_PICK")
+  point_movel(P3F_A, ACTION_NONE, "P3_FIN_RETRACT")
+  go_home("HOME_AFTER_P3_FIN")
+  point_movej(Q4B_A, ACTION_NONE, "P4_BOX_APPROACH")
+  point_movel(PACK_P4_BOX_PLACE, ACTION_GRIP_OPEN, "P4_BOX_PLACE")
+  point_movel(P4B_A, ACTION_NONE, "P4_BOX_RETRACT")
+  go_home("HOME_END")
+end
+
+
+def UR3_PACKING_V8():
+  if not PACK_IO_VALID:
+    configure_io()
+  else:
+    if ask_yes("Modify I/O setup? YES=Modify / NO=Next"):
+      configure_io()
+    end
+  end
+
+  set_digital_out(PACK_DO_POINT_DONE, False)
+
+  if not PACK_HOME_VALID:
+    popup("Teach HOME first. Choose a central, comfortably folded arm posture.",
+          title="HOME TEACH",
+          warning=False,
+          error=False,
+          blocking=True)
+    teach_home(True)
+  else:
+    teach_home(False)
+  end
+
+  if not PACK_POINTS_VALID:
+    popup("Teach all 7 work points once. Pose + joint posture will be stored.",
+          title="WORK POINT TEACH",
+          warning=False,
+          error=False,
+          blocking=True)
+    teach_points(True)
+  else:
+    if ask_yes("Modify work points? YES=Modify / NO=Run"):
+      teach_points(False)
+    end
+  end
+
+  popup("Ready: long travel via HOME/MOVEJ; local work by MOVEL.",
+        title="PACKING READY",
+        warning=False,
+        error=False,
+        blocking=True)
+
+  while True:
+    run_cycle()
+  end
+end
+
+
+UR3_PACKING_V8()
