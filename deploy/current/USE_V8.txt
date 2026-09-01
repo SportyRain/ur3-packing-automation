@@ -1,0 +1,1 @@
+Use V8 only. V7 is COMPILE_BLOCKED on actual UR3 CB3 / PolyScope 3.15.8 because getj() is undefined. V8 uses get_actual_joint_positions().
