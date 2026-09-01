@@ -1,0 +1,2 @@
+Matching local package filename: UR3_PACKING_V8_CB3_COMPAT_READY.zip
+Status: script patched for CB3 get_actual_joint_positions(); actual pendant parser acceptance NOT_VERIFIED.
