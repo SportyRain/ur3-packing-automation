@@ -1,6 +1,6 @@
 # 개발 히스토리
 
-## 2026-09-01
+## 2026-09-01~2026-09-02
 
 ### 초기 요구사항
 
@@ -43,22 +43,33 @@
 
 ### V7
 
-- HOME + 각 작업점 TCP/joint posture 영구 저장 구조
+- HOME + 각 작업점 TCP/joint posture 저장 구조
 - 좌표가 약 ±100 mm 변경되더라도 해당 포인트만 재티칭 가능하도록 설계
 - 현재 pose 기준 approach IK를 다시 계산
-- 기존 로봇 설치에서 사용하던 `Box_Gripper1` TCP / Payload 0.5 kg 정보를 설치 파일에 반영
-- 실제 UR3 CB3 / PolyScope 3.15.8 팬던트에서 컴파일 시 `getj()` 함수 미정의 오류 확인
+- 실제 UR3 CB3 / PolyScope 3.15.8 팬던트에서 `getj()` 함수 미정의 컴파일 오류 확인
 - 상태: `COMPILE_BLOCKED`
 
-### V8 (현재)
+### V8
 
-- V7의 모든 `getj()` 호출을 공식 URScript 함수 `get_actual_joint_positions()`로 수정
-- HOME 및 7개 작업점의 실제 6축 관절 위치 저장 방식 유지
+- 모든 `getj()` 호출을 `get_actual_joint_positions()`로 수정
 - HOME 경유 MOVEJ / 작업점 주변 MOVEL 구조 유지
-- `get_inverse_kin_has_solution()`은 PolyScope 3.15에서 추가된 함수이므로 유지
-- V8 script patch 상태: `VERIFIED`
-- 실제 팬던트 parser acceptance: `NOT_VERIFIED`
-- 실제 모션: `NOT_VERIFIED`
+- 문제점: `HOME`, `APPROACH`, 실제 작업점, `RETRACT` 각각에 START/DONE이 들어가 한 사이클에 약 29회의 handshake를 요구
+- 사용자가 요구한 것은 보조 경로가 아니라 **실제 공정 위치마다 1회의 START/DONE**임을 재확인
+
+### V9 (현재)
+
+- PLC handshake 단위를 **공정 위치 7개**로 수정
+- HOME / APPROACH / RETRACT는 UR 내부 경로로만 사용하고 별도 START/DONE 제거
+- 한 사이클 START/DONE = 정확히 7회
+- P2는 HOLD 위치에 도착하면 DONE 후 그대로 유지하며, PLC가 밑판 접기를 완료한 뒤 다음 START가 들어와야 P2를 이탈
+- P3 제품 투입 단계는 제품 투입/해제 후 lid backoff까지 완료한 시점에 DONE
+- PLC는 뚜껑 닫기가 끝날 때까지 다음 START를 보류하고, 다음 START에서 완성 박스를 측면 재파지
+- 마지막 P4 배치는 배치/이탈/HOME 복귀 후 DONE
+- `get_actual_joint_positions()` 수정 유지
+- 기존 `packing2`를 덮어쓰지 않도록 installation 이름을 `UR3_PACKING_V9`로 독립
+- V9 script handshake 구조 오프라인 검사: `PASS`
+- V9 URP/installation gzip XML 구조 검사: `PASS`
+- 실제 팬던트 parser/변수 persistence/PLC/실물 동작: `NOT_VERIFIED`
 
 ## 주의
 
