@@ -6,8 +6,10 @@ UR3 CB3 / PolyScope 3.15.x 기반 개인용 포장 자동화 프로젝트입니�
 
 ## 현재 기준
 
-- 현재 canonical 버전: **V7**
-- 로봇: UR3 CB3 / PolyScope 3.15.x
+- 현재 canonical 버전: **V8**
+- V7 상태: **COMPILE_BLOCKED** (`getj()` undefined on actual PolyScope 3.15.8)
+- V8 수정: `getj()` → `get_actual_joint_positions()`
+- 로봇: UR3 CB3 / PolyScope 3.15.8
 - 운전 목표: 배포 후 PC/ROS 없이 PolyScope 단독 운전
 - PLC handshake: **모든 실제 이동 포인트마다 START 1회 -> 1개 이동 -> DONE 1회**
 - 그리퍼: 일반 Control Box DO
@@ -37,16 +39,13 @@ P2 밑판 접기와 P3 뚜껑 닫기는 별도 process-done I/O를 추가하지 
 
 ```text
 deploy/current/       현재 팬던트 배포 기준 파일
-deploy/*.zip          USB 배포용 묶음
-releases/             V4~V7 USB 배포 패키지
+releases/             USB 배포 패키지
 docs/version-notes/   버전별 상세 메모
 docs/                 시퀀스 / I/O / 티칭 / 설치 문서
-HISTORY.md            V1~V7 변경 이력
+HISTORY.md            변경 이력
 PROJECT_STATE.md      현재 검증 상태
 ```
 
 ## 중요한 상태
 
-현재 V7의 **파일 구조 및 설계는 준비됨** 상태입니다. 실제 팬던트 parser acceptance, 실제 I/O 극성, 실제 HOME/관절 경로 및 실물 자동 사이클은 아직 `NOT_VERIFIED`입니다.
-
-실물 검증 전에는 낮은 속도에서 포인트별로 확인하십시오.
+V8의 script compatibility fix는 반영됐지만 실제 팬던트 parser acceptance 및 실제 모션은 아직 `NOT_VERIFIED`입니다. 실물 검증 전에는 낮은 속도에서 포인트별로 확인하십시오.
