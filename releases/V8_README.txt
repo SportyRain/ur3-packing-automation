@@ -1,0 +1,1 @@
+V8 fixes the actual CB3 compile error caused by undefined getj(). All joint posture reads now use get_actual_joint_positions(). Use the V8 package for the next pendant compile test. V8 pendant parser acceptance is NOT_VERIFIED until the next real load.
