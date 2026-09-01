@@ -1,0 +1,1 @@
+Temporary compatibility note: V7 failed to compile on the actual UR3 CB3 / PolyScope 3.15.8 because `getj()` is undefined. V8 replaces all `getj()` calls with `get_actual_joint_positions()`. This file will be folded into HISTORY.md after pendant parser validation.
