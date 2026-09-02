@@ -1,0 +1,10 @@
+{
+  "version": "0.3.0",
+  "runtime_failure_addressed": "P3_PRODUCT_INSERT exact 100mm local -Z no IK",
+  "desired_clearance_mm": 100,
+  "preview_fallback_search_mm": "95 down to 40 in 5mm steps",
+  "fallback": "PREVIEW_ONLY_AND_WARN",
+  "recommended_ros_domain_id": 77,
+  "hardware_command_path": "ABSENT_STATIC_CHECK",
+  "ros_runtime_after_patch": "NOT_YET_VERIFIED"
+}

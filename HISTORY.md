@@ -71,6 +71,52 @@
 - V9 URP/installation gzip XML 구조 검사: `PASS`
 - 실제 팬던트 parser/변수 persistence/PLC/실물 동작: `NOT_VERIFIED`
 
+### ROS Natural Motion Preview v0.1~v0.3 (실물 전 시각 검증, V9와 분리)
+
+목적은 V9 URScript를 즉시 변경하는 것이 아니라, **실물 구동 전 ROS/RViz에서 자연스러운 자세와 접근/후퇴를 먼저 확인**하는 것입니다.
+
+확정 입력:
+
+- UR3 CB3 / ROS 2 Jazzy
+- factory calibration: `/home/rosystem/ur3_factory_calibration.yaml`
+- 실제 joint posture 8개: HOME + 공정점 7개
+- 흡착기: 원통 Ø20 mm, 길이 80 mm(어댑터 포함), tool0 중심 일치, `+Z`
+- TCP: 흡착면 중심 = `tool0 +Z 80 mm`
+- 작업점 정지: 3초
+- 접근/후퇴 목표: TCP local `-Z 100 mm`
+- 속도 튜닝: 현재 범위에서 제외
+- 사용자 조건: 각 작업점에서 100 mm 후퇴 시 주변 설비 충돌 없음
+
+v0.2 구현:
+
+- 사용자 joint posture → MoveIt FK → 작업 pose 복원
+- 같은 작업 pose에 대해 multi-seed IK 후보 생성
+- 이전 자세 연속성, shoulder/elbow 급변, wrist 불필요 회전, 관절 중앙 여유, 원래 티칭 자세 prior로 후보 score
+- 5차 minimum-jerk joint interpolation
+- Ø20×80 mm suction marker 시각화
+- 실물 제어 경로 없음
+
+실제 v0.2 런타임 결과:
+
+- `P1_BOX_PICK`: work IK 28 / approach IK 27
+- `P2_BOTTOM_HOLD`: work IK 14 / approach IK 17
+- `P3_BOX_PLACE`: work IK 24 / approach IK 25
+- `P4_PRODUCT_PICK`: work IK 26 / approach IK 30
+- `P3_PRODUCT_INSERT`: exact local `-Z 100 mm` approach에서 IK candidate 0 → fail-closed 종료
+
+v0.3 수정:
+
+- exact 100 mm collision-aware IK를 최우선 유지
+- 실패 시 100 mm kinematic-only IK를 추가 확인하여 원인 분류
+- **미리보기에서만** 95, 90, 85 ... 40 mm 순으로 가장 긴 collision-aware 직선 후퇴를 탐색
+- 축소 시 `PREVIEW ONLY fallback`과 실제 사용 거리를 명시
+- 40 mm까지도 없으면 fail-closed
+- 기존 PC에 실제 `controller_manager`, `servo_node`, UR controller가 살아 있던 점을 반영해 `ROS_DOMAIN_ID=77` 격리 권장
+- v0.3 실제 Ubuntu 재실행: `NOT_VERIFIED`
+- 실제 UR3 motion: `NOT_ATTEMPTED`
+
+주의: preview의 `step_mode`는 APPROACH/WORK/RETRACT 단위 디버그용이며, **V9의 실제 PLC 공정 handshake 7회 계약을 변경하지 않습니다.**
+
 ## 주의
 
 V4에서 사용자가 티칭했던 값은 제출된 `packing2.variables`에서 확인되지 않았습니다. 당시 파일에는 타임스탬프 외 `PACK_*` 저장값이 없었으므로 해당 좌표는 이 저장소에 복구하지 못했습니다.

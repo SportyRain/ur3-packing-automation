@@ -1,0 +1,150 @@
+joint_names:
+- shoulder_pan_joint
+- shoulder_lift_joint
+- elbow_joint
+- wrist_1_joint
+- wrist_2_joint
+- wrist_3_joint
+reference_unit: degree
+tool:
+  type: pneumatic_suction_cylinder
+  diameter_m: 0.02
+  length_m: 0.08
+  tool0_axis: +Z
+  tcp_offset_tool0_m:
+  - 0.0
+  - 0.0
+  - 0.08
+motion:
+  approach_retract_m: 0.1
+  approach_direction_tcp_local: -Z
+  work_hold_s: 3.0
+  segment_duration_s: 2.0
+  preview_rate_hz: 125.0
+  optimize_work_posture: true
+  candidate_seed_count: 32
+  clearance_desired_m: 0.1
+  clearance_min_preview_m: 0.04
+  clearance_search_step_m: 0.005
+  preview_allow_reduced_clearance: true
+workpoints:
+- name: HOME
+  positions_deg:
+  - 2.61
+  - -70.43
+  - -110.8
+  - -85.86
+  - 90.46
+  - -33.06
+  positions_rad:
+  - 0.045553093477
+  - -1.22923539218
+  - -1.93382481121
+  - -1.498539695762
+  - 1.578824841354
+  - -0.577005850709
+- name: P1_BOX_PICK
+  positions_deg:
+  - 115.73
+  - -88.33
+  - -123.03
+  - -55.28
+  - 87.39
+  - -33.05
+  positions_rad:
+  - 2.019869543333
+  - -1.541649328287
+  - -2.147278578729
+  - -0.964818010502
+  - 1.525243233318
+  - -0.576831317784
+- name: P2_BOTTOM_HOLD
+  positions_deg:
+  - 46.0
+  - -107.85
+  - -81.28
+  - -80.83
+  - 88.97
+  - 46.68
+  positions_rad:
+  - 0.802851455917
+  - -1.882337598276
+  - -1.418603616021
+  - -1.410749634387
+  - 1.552819435499
+  - 0.814719694831
+- name: P3_BOX_PLACE
+  positions_deg:
+  - -13.91
+  - -123.81
+  - -116.06
+  - 50.8
+  - 101.38
+  - 45.39
+  positions_rad:
+  - -0.242775298952
+  - -2.160892146894
+  - -2.025629129865
+  - 0.886627260013
+  - 1.769414795672
+  - 0.79220494748
+- name: P4_PRODUCT_PICK
+  positions_deg:
+  - -66.94
+  - -124.02
+  - -60.14
+  - -81.42
+  - 93.65
+  - 45.39
+  positions_rad:
+  - -1.168323401285
+  - -2.164557338323
+  - -1.049641012149
+  - -1.421047076974
+  - 1.634500844493
+  - 0.79220494748
+- name: P3_PRODUCT_INSERT
+  positions_deg:
+  - -11.29
+  - -108.37
+  - -59.93
+  - -100.8
+  - 88.99
+  - 45.47
+  positions_rad:
+  - -0.19704767255
+  - -1.891413310386
+  - -1.04597582072
+  - -1.75929188601
+  - 1.55316850135
+  - 0.793601210882
+- name: P3_FINISHED_BOX_PICK
+  positions_deg:
+  - -16.11
+  - -104.28
+  - -93.57
+  - -165.55
+  - -108.52
+  - 46.02
+  positions_rad:
+  - -0.281172542496
+  - -1.82002934398
+  - -1.633104581091
+  - -2.889392576677
+  - -1.894031304264
+  - 0.803200521768
+- name: P4_BOX_PLACE
+  positions_deg:
+  - -51.0
+  - -132.9
+  - -65.43
+  - -173.55
+  - -48.15
+  - 52.98
+  positions_rad:
+  - -0.890117918517
+  - -2.3195425759
+  - -1.14196892958
+  - -3.029018916836
+  - -0.840376034835
+  - 0.924675437707
