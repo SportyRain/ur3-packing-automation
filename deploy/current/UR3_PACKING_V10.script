@@ -1,5 +1,5 @@
 # UR3 CB3 / PolyScope 3.15.8
-# PACKING V9 - PROCESS-STEP HANDSHAKE + HOME/JOINT ROUTING
+# PACKING V10 - STEP-LOCAL IK + P3 INSERT 70MM + EARLY DONE RESET
 #
 # Important:
 # - Different stations are NOT connected with a long Cartesian MOVEL.
@@ -23,6 +23,10 @@ MOVEJ_V = 0.30
 MOVEL_A = 0.35
 MOVEL_V = 0.05
 GRIP_DELAY = 0.30
+
+# P3 PRODUCT INSERT only: use 70 mm approach/backoff.
+# Other points continue to use persistent PACK_CLEARANCE.
+P3_INSERT_CLEARANCE = 0.070
 
 ACTION_NONE = 0
 ACTION_GRIP_OPEN = 1
@@ -241,8 +245,12 @@ def teach_points(force_all):
 end
 
 
+def approach_pose_with_clearance(target, clearance):
+  return pose_trans(target, p[0,0,-clearance,0,0,0])
+end
+
 def approach_pose(target):
-  return pose_trans(target, p[0,0,-PACK_CLEARANCE,0,0,0])
+  return approach_pose_with_clearance(target, PACK_CLEARANCE)
 end
 
 
@@ -260,6 +268,9 @@ end
 
 
 def wait_fresh_start():
+  # Fresh-edge style handshake:
+  # 1) previous START must be LOW
+  # 2) then wait for the next START HIGH
   while get_digital_in(PACK_DI_POINT_START):
     sync()
   end
@@ -276,8 +287,12 @@ end
 
 
 def finish_step(label):
+  # DONE means the full work-position operation is complete, including
+  # the internal approach/retract needed to leave the station safely.
   textmsg("PACK_STEP_DONE: ", label)
   set_digital_out(PACK_DO_POINT_DONE, True)
+
+  # PLC must drop START before DONE is cleared.
   while get_digital_in(PACK_DI_POINT_START):
     sync()
   end
@@ -298,21 +313,12 @@ end
 
 
 def run_cycle():
+  # V10: solve only the upcoming process step.
+  # A later unreachable point does not block the cycle before STEP 1.
+
+  # STEP 1 / P1: pick new box from the side.
   local P1_A = approach_pose(PACK_P1_BOX_PICK)
   local Q1_A = solve_near(P1_A, PACK_Q_P1_BOX_PICK, "P1_APPROACH")
-  local P2_A = approach_pose(PACK_P2_BOTTOM_HOLD)
-  local Q2_A = solve_near(P2_A, PACK_Q_P2_BOTTOM_HOLD, "P2_APPROACH")
-  local P3B_A = approach_pose(PACK_P3_BOX_PLACE)
-  local Q3B_A = solve_near(P3B_A, PACK_Q_P3_BOX_PLACE, "P3_BOX_APPROACH")
-  local P4P_A = approach_pose(PACK_P4_PRODUCT_PICK)
-  local Q4P_A = solve_near(P4P_A, PACK_Q_P4_PRODUCT_PICK, "P4_PRODUCT_APPROACH")
-  local P3I_A = approach_pose(PACK_P3_PRODUCT_INSERT)
-  local Q3I_A = solve_near(P3I_A, PACK_Q_P3_PRODUCT_INSERT, "P3_INSERT_APPROACH")
-  local P3F_A = approach_pose(PACK_P3_FIN_PICK)
-  local Q3F_A = solve_near(P3F_A, PACK_Q_P3_FIN_PICK, "P3_FIN_APPROACH")
-  local P4B_A = approach_pose(PACK_P4_BOX_PLACE)
-  local Q4B_A = solve_near(P4B_A, PACK_Q_P4_BOX_PLACE, "P4_BOX_APPROACH")
-
   begin_step("1_P1_BOX_PICK")
   internal_movej(PACK_HOME_Q, "S1_HOME")
   internal_movej(Q1_A, "S1_P1_APPROACH")
@@ -321,12 +327,19 @@ def run_cycle():
   internal_movel(P1_A, "S1_P1_RETRACT")
   finish_step("1_P1_BOX_PICK")
 
+  # STEP 2 / P2: enter bottom-fold HOLD and stay there.
+  local P2_A = approach_pose(PACK_P2_BOTTOM_HOLD)
+  local Q2_A = solve_near(P2_A, PACK_Q_P2_BOTTOM_HOLD, "P2_APPROACH")
   begin_step("2_P2_BOTTOM_HOLD")
   internal_movej(PACK_HOME_Q, "S2_HOME")
   internal_movej(Q2_A, "S2_P2_APPROACH")
   internal_movel(PACK_P2_BOTTOM_HOLD, "S2_P2_HOLD")
   finish_step("2_P2_BOTTOM_HOLD")
 
+  # PLC folds the bottom while UR remains at P2 HOLD.
+  # STEP 3 START is permission to leave P2.
+  local P3B_A = approach_pose(PACK_P3_BOX_PLACE)
+  local Q3B_A = solve_near(P3B_A, PACK_Q_P3_BOX_PLACE, "P3_BOX_APPROACH")
   begin_step("3_P3_EMPTY_BOX_PLACE")
   internal_movel(P2_A, "S3_LEAVE_P2")
   internal_movej(PACK_HOME_Q, "S3_HOME")
@@ -336,6 +349,9 @@ def run_cycle():
   internal_movel(P3B_A, "S3_P3_BOX_RETRACT")
   finish_step("3_P3_EMPTY_BOX_PLACE")
 
+  # STEP 4 / P4: pick product from the top.
+  local P4P_A = approach_pose(PACK_P4_PRODUCT_PICK)
+  local Q4P_A = solve_near(P4P_A, PACK_Q_P4_PRODUCT_PICK, "P4_PRODUCT_APPROACH")
   begin_step("4_P4_PRODUCT_PICK")
   internal_movej(PACK_HOME_Q, "S4_HOME")
   internal_movej(Q4P_A, "S4_P4_PRODUCT_APPROACH")
@@ -344,6 +360,10 @@ def run_cycle():
   internal_movel(P4P_A, "S4_P4_PRODUCT_RETRACT")
   finish_step("4_P4_PRODUCT_PICK")
 
+  # STEP 5 / P3: insert product and back off for lid closing.
+  # V10: P3 INSERT uses 70 mm; other points still use PACK_CLEARANCE.
+  local P3I_A = approach_pose_with_clearance(PACK_P3_PRODUCT_INSERT, P3_INSERT_CLEARANCE)
+  local Q3I_A = solve_near(P3I_A, PACK_Q_P3_PRODUCT_INSERT, "P3_INSERT_APPROACH")
   begin_step("5_P3_PRODUCT_INSERT")
   internal_movej(PACK_HOME_Q, "S5_HOME")
   internal_movej(Q3I_A, "S5_P3_PRODUCT_ABOVE")
@@ -352,6 +372,12 @@ def run_cycle():
   internal_movel(P3I_A, "S5_P3_LID_BACKOFF")
   finish_step("5_P3_PRODUCT_INSERT")
 
+  # PLC closes the lid after STEP 5 DONE and withholds STEP 6 START
+  # until the lid-close process is complete.
+
+  # STEP 6 / P3: re-grip the finished box from the side.
+  local P3F_A = approach_pose(PACK_P3_FIN_PICK)
+  local Q3F_A = solve_near(P3F_A, PACK_Q_P3_FIN_PICK, "P3_FIN_APPROACH")
   begin_step("6_P3_FINISHED_BOX_PICK")
   internal_movej(PACK_HOME_Q, "S6_HOME")
   internal_movej(Q3F_A, "S6_P3_FIN_APPROACH")
@@ -360,6 +386,9 @@ def run_cycle():
   internal_movel(P3F_A, "S6_P3_FIN_RETRACT")
   finish_step("6_P3_FINISHED_BOX_PICK")
 
+  # STEP 7 / P4: place finished box and return HOME.
+  local P4B_A = approach_pose(PACK_P4_BOX_PLACE)
+  local Q4B_A = solve_near(P4B_A, PACK_Q_P4_BOX_PLACE, "P4_BOX_APPROACH")
   begin_step("7_P4_FINISHED_BOX_PLACE")
   internal_movej(PACK_HOME_Q, "S7_HOME")
   internal_movej(Q4B_A, "S7_P4_BOX_APPROACH")
@@ -369,18 +398,21 @@ def run_cycle():
   internal_movej(PACK_HOME_Q, "S7_HOME_END")
   finish_step("7_P4_FINISHED_BOX_PLACE")
 end
+def UR3_PACKING_V10():
+  # If stored I/O is valid, force DONE LOW immediately before any menu.
+  if PACK_IO_VALID and validate_io_config():
+    set_digital_out(PACK_DO_POINT_DONE, False)
 
-
-def UR3_PACKING_V9():
-  if not PACK_IO_VALID:
-    configure_io()
-  else:
     if ask_yes("Modify I/O setup? YES=Modify / NO=Next"):
       configure_io()
+      # DONE output number may have changed.
+      set_digital_out(PACK_DO_POINT_DONE, False)
     end
+  else:
+    global PACK_IO_VALID = False
+    configure_io()
+    set_digital_out(PACK_DO_POINT_DONE, False)
   end
-
-  set_digital_out(PACK_DO_POINT_DONE, False)
 
   if not PACK_HOME_VALID:
     popup("Teach HOME first. Choose a central, comfortably folded arm posture.",
@@ -406,7 +438,7 @@ def UR3_PACKING_V9():
     end
   end
 
-  popup("Ready: 7 process-step START/DONE handshakes per cycle.",
+  popup("Ready: V10 / exactly 7 process START-DONE handshakes.",
         title="PACKING READY",
         warning=False,
         error=False,
@@ -418,4 +450,4 @@ def UR3_PACKING_V9():
 end
 
 
-UR3_PACKING_V9()
+UR3_PACKING_V10()
