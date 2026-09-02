@@ -50,7 +50,7 @@ J6 = 87.6°
 - Whole-body candidate가 envelope/jump guard를 넘으면 `100% → 75% → 50% → 25%`로 자동 축소
 - Precision APPROACH / SETTLE / WORK / RETRACT에는 Whole-body layer를 적용하지 않음
 
-## 검증
+## 정적 검증
 
 - Python static parse: PASS
 - pure trajectory tests: 15 passed
@@ -58,10 +58,58 @@ J6 = 87.6°
 - endpoint-preserving Whole-body choreography: PASS
 - joint-specific participation objective: PASS
 - 실제 UR command path 정적 검사: NONE
-- 실제 Ubuntu ROS 2 Jazzy v0.7 runtime: NOT_VERIFIED
-- workcell collision validation: NOT_VERIFIED
-- physical robot motion: NOT_ATTEMPTED
+
+## 실제 ROS 런타임 — 2026-09-03
+
+사용자가 Ubuntu / ROS 2 Jazzy에서 `ROS_DOMAIN_ID=77`, `motion_style:=lively`로 실행한 로그를 기준으로 v0.7 runtime을 검증했습니다.
+
+### VERIFIED
+
+- `P1_BOX_PICK_TRANSIT`: CONTINUOUS_WHOLE_BODY 실행
+- `P2_BOTTOM_HOLD_TRANSIT`: CONTINUOUS_WHOLE_BODY 실행
+- `P3_BOX_PLACE_TRANSIT`: CONTINUOUS_WHOLE_BODY 실행
+- `P4_PRODUCT_PICK_TRANSIT`: 1.00 경로에서 NO_IK 후 0.82로 축소하여 branch-continuous IK 성공
+- `P3_PRODUCT_INSERT_TRANSIT`: 1.00/0.82/0.64/0.46 실패 후 0.28에서 branch-continuous IK 성공
+- `P3_FINISHED_BOX_PICK_TRANSIT`: v0.6의 대형 wrist jump 대신 다수의 `IK_BRANCH_REPAIRED`가 작동하여 인접 sample 이동을 제한
+- `P4_BOX_PLACE_TRANSIT`: CONTINUOUS_WHOLE_BODY 실행
+
+### 남은 문제
+
+`P3_FINISHED_BOX_PICK_TRANSIT`은 branch repair 자체는 동작했지만 Cartesian show path는 끝까지 연결되지 않았습니다.
+
+- scale 1.00: 후반 NO_IK
+- scale 0.82: 후반 NO_IK
+- scale 0.64: 후반 NO_IK
+- scale 0.46: 후반 NO_IK
+- scale 0.28: NO_IK
+- 최종 `PREVIEW ONLY branch-safe direct joint transit` 사용
+
+fallback 경로의 peak-to-peak 참여도:
+
+```text
+J1  15.7°
+J2  30.5°
+J3  86.5°
+J4  38.5°
+J5 152.2°
+J6   2.5°
+```
+
+따라서 대형 branch jump 문제는 개선됐지만 J5에 회전이 과도하게 집중되는 문제는 남았습니다.
+
+HOME_RETURN도 base path가 soft joint envelope를 넘어 Whole-body layer가 취소되었습니다.
+
+### v0.7 최종 판정
+
+- ROS 2 Jazzy runtime: `VERIFIED`
+- branch continuity repair: `VERIFIED`
+- v0.6 wrist branch jump regression: `RESOLVED_BY_GUARD/REPAIR`
+- P3_FINISHED_BOX_PICK Cartesian show route: `BLOCKED_NO_IK`
+- P3_FINISHED_BOX_PICK direct fallback: `WORKING_BUT_J5_DOMINANT`
+- HOME_RETURN whole-body: `BLOCKED_BY_SOFT_ENVELOPE`
+- workcell collision validation: `NOT_VERIFIED`
+- physical robot motion: `NOT_ATTEMPTED`
 
 ## 상태
 
-이 문서는 v0.7 candidate 구현 기록입니다. 실제 ROS runtime 검증 전까지 production V10 파일은 변경하지 않으며, 기존 production PLC 계약 7회 START/DONE도 변경하지 않습니다.
+v0.7은 **runtime verified intermediate candidate**입니다. Production V10 파일과 실제 PLC 공정 handshake 7회 계약은 변경하지 않습니다. 남은 두 문제는 v0.8에서 전용 Hybrid VIA / wrist coordination 전략으로 다룹니다.
