@@ -1,0 +1,21 @@
+{
+  "package": "ur3_natural_motion_preview",
+  "version": "0.5.0",
+  "feature": "SHOW_MOTION",
+  "default_mode": "LIVELY",
+  "modes": ["CLEAN", "LIVELY", "SHOWMAN"],
+  "precision_tcp": "PRESERVED_BY_CONSTRUCTION",
+  "clearance_policy": {
+    "P3_PRODUCT_INSERT_m": 0.07,
+    "OTHER_PROCESS_POINTS_m": 0.1
+  },
+  "work_hold_s": 3.0,
+  "startup_joint_state_heartbeat": "20_HZ",
+  "adaptive_show_path": "SCALE_RETRY_THEN_PREVIEW_DIRECT_FALLBACK",
+  "static_python_parse": "PASS",
+  "trajectory_unit_tests": "6_PASSED",
+  "forbidden_hardware_command_static_check": "PASS",
+  "ros2_jazzy_runtime": "NOT_VERIFIED",
+  "scene_collision_validation": "NOT_VERIFIED",
+  "physical_robot_motion": "NOT_ATTEMPTED"
+}
