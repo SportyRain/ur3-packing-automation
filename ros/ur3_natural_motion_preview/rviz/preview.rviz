@@ -25,6 +25,12 @@ Visualization Manager:
         Value: /preview/gripper
       Name: Suction Gripper
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Marker Topic:
+        Value: /preview/path
+      Name: Planned TCP Path
+      Value: true
   Global Options:
     Background Color: 48; 48; 48
     Fixed Frame: base_link

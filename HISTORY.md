@@ -134,7 +134,37 @@ v0.3 수정:
 - v0.3 실제 Ubuntu 재실행: `NOT_VERIFIED`
 - 실제 UR3 motion: `NOT_ATTEMPTED`
 
-주의: preview의 `step_mode`는 APPROACH/WORK/RETRACT 단위 디버그용이며, **V10의 실제 PLC 공정 handshake 7회 계약을 변경하지 않습니다.**
+### ROS Natural Motion Preview v0.4 — Performance Motion
+
+사용자 피드백: 기존 미리보기의 움직임이 너무 로봇처럼 보였고, 몇 개의 의미 있는 경로나 퍼포먼스형 움직임을 추가하고 싶다는 요구가 발생했습니다.
+
+v0.4에서는 단순 joint-to-joint interpolation을 유지하지 않고 **Motion Style Layer**를 추가했습니다.
+
+- production 기준은 V10으로 동기화
+  - `P3_PRODUCT_INSERT`: local `-Z 70 mm`
+  - 나머지 공정점: 100 mm
+- 작업 TCP 위치/방향은 기존 티칭 joint → FK로 복원한 값을 그대로 유지
+- 장거리 공정 이동은 Cartesian cubic Bezier curve 사용
+- 시작점/도착점 사이에 2개 내부 control point를 자동 생성해 완만한 lift/arc 형태 구성
+- 공정별 style profile 추가
+  - `SIDE_PICK`
+  - `LOW_APPROACH`
+  - `SIDE_PLACE`
+  - `TOP_PICK`
+  - `TOP_INSERT`
+- orientation은 위치 도착 전에 목표 방향에 대부분 정렬되도록 SLERP를 선행 적용해 마지막 wrist snap 억제
+- 각 Cartesian sample은 이전 IK solution을 seed로 사용해 branch continuity 유지
+- APPROACH/RETRACT는 Cartesian 직선 pose sample + continuous IK로 생성
+- 내부 경로 샘플은 하나의 segment로 재생하여 VIA마다 정지하지 않음
+- TRANSIT 내부 q path는 Catmull-Rom, APPROACH/RETRACT는 sampled polyline을 minimum-jerk 진행률로 재생
+- RViz `/preview/path`에 계획된 TCP 경로 시각화
+- `motion_style:=performance`와 `motion_style:=baseline` 비교 지원
+- 실제 controller/servo graph와 분리하기 위해 `ROS_DOMAIN_ID=77` 유지
+- 주변 설비 3D geometry가 없으므로 performance arc의 실제 설비 충돌: `NOT_VERIFIED`
+- v0.4 실제 Ubuntu ROS runtime: `NOT_VERIFIED`
+- 실제 UR3 command/motion: `NONE / NOT_ATTEMPTED`
+
+주의: preview의 `step_mode`는 내부 경로를 검사하기 위한 디버그 기능이며, **V10의 실제 PLC 공정 handshake 7회 계약을 변경하지 않습니다.**
 
 ## 주의
 

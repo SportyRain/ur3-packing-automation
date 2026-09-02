@@ -27,6 +27,42 @@ motion:
   clearance_min_preview_m: 0.04
   clearance_search_step_m: 0.005
   preview_allow_reduced_clearance: true
+  style_mode: performance
+  transit_samples: 22
+  linear_samples: 12
+  performance:
+    default_lift_m: 0.1
+    default_arc_side_m: 0.03
+    orientation_lead: 0.72
+    styles:
+      P1_BOX_PICK:
+        type: SIDE_PICK
+        lift_m: 0.1
+        arc_side_m: 0.03
+      P2_BOTTOM_HOLD:
+        type: LOW_APPROACH
+        lift_m: 0.08
+        arc_side_m: -0.02
+      P3_BOX_PLACE:
+        type: SIDE_PLACE
+        lift_m: 0.12
+        arc_side_m: 0.035
+      P4_PRODUCT_PICK:
+        type: TOP_PICK
+        lift_m: 0.14
+        arc_side_m: -0.025
+      P3_PRODUCT_INSERT:
+        type: TOP_INSERT
+        lift_m: 0.12
+        arc_side_m: 0.02
+      P3_FINISHED_BOX_PICK:
+        type: SIDE_PICK
+        lift_m: 0.11
+        arc_side_m: -0.03
+      P4_BOX_PLACE:
+        type: SIDE_PLACE
+        lift_m: 0.12
+        arc_side_m: 0.03
 workpoints:
 - name: HOME
   positions_deg:
@@ -118,6 +154,7 @@ workpoints:
   - -1.75929188601
   - 1.55316850135
   - 0.793601210882
+  clearance_override_m: 0.07
 - name: P3_FINISHED_BOX_PICK
   positions_deg:
   - -16.11

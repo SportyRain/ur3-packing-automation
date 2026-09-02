@@ -14,6 +14,7 @@ def generate_launch_description():
     workpoint_file = LaunchConfiguration("workpoint_file")
     step_mode = LaunchConfiguration("step_mode")
     loop = LaunchConfiguration("loop")
+    motion_style = LaunchConfiguration("motion_style")
 
     robot_description = ParameterValue(
         Command([
@@ -56,8 +57,8 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument("step_mode", default_value="false"),
         DeclareLaunchArgument("loop", default_value="true"),
+        DeclareLaunchArgument("motion_style", default_value="performance"),
 
-        # Description only. No ros2_control node and no physical UR driver.
         Node(
             package="robot_state_publisher",
             executable="robot_state_publisher",
@@ -75,6 +76,7 @@ def generate_launch_description():
                 "workpoint_file": workpoint_file,
                 "step_mode": ParameterValue(step_mode, value_type=bool),
                 "loop": ParameterValue(loop, value_type=bool),
+                "motion_style": motion_style,
             }],
         ),
 

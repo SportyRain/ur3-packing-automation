@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>ur3_natural_motion_preview</name>
-  <version>0.3.0</version>
+  <version>0.4.0</version>
   <description>Visual-only UR3 natural-motion preview with MoveIt FK/IK optimization.</description>
   <maintainer email="preview@example.invalid">UR3 Preview</maintainer>
   <license>BSD-3-Clause</license>
