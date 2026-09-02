@@ -40,21 +40,24 @@ HOME/APPROACH/RETRACT는 공정 내부 경로이며 PLC 신호를 추가로 요�
 ros/ur3_natural_motion_preview/
 ```
 
-- 현재 preview 버전: **v0.3.0**
+- 현재 preview 버전: **v0.4.0**
 - 실제 V10 배포 로직을 대체하지 않음
 - URScript/RTDE/trajectory controller/robot IP 제어 경로 없음
 - 사용자 제공 8개 실제 관절 자세를 FK로 TCP pose로 복원
 - Ø20 × 80 mm 공압 흡착기, `tool0 +Z`, TCP `+80 mm`
-- 각 작업점에서 TCP local `-Z` 방향 100 mm approach/retract 목표
+- V10 기준 clearance: `P3_PRODUCT_INSERT=70 mm`, 나머지 공정점 `100 mm`
 - 작업점 정지: 3초
 - 자세 선택: multi-seed IK + 관절 연속성/손목 회전/관절여유 score
-- v0.2 실측 런타임에서 `P3_PRODUCT_INSERT`의 exact 100 mm approach IK가 0개로 확인됨
-- v0.3은 **미리보기에서만** 95→40 mm까지 가장 긴 도달 가능한 직선 clearance를 탐색하고 명시적 경고
+- v0.4 Performance Motion: 공정 사이 장거리 이동을 Cartesian cubic Bezier arc로 생성
+- 손목 orientation을 목표 위치보다 먼저 정렬하여 마지막 순간 wrist snap 억제
+- APPROACH/RETRACT는 Cartesian 직선 pose sample + continuous IK
+- `motion_style:=performance` / `motion_style:=baseline` 비교 가능
+- RViz `/preview/path`에 계획된 TCP path 표시
 - 실제 controller/servo 그래프와 섞이지 않도록 `ROS_DOMAIN_ID=77` 권장
 
 상세 상태와 런타임 기록은 [`docs/ROS_NATURAL_MOTION_PREVIEW.md`](docs/ROS_NATURAL_MOTION_PREVIEW.md)를 봅니다.
 
-> Preview의 `step_mode`는 APPROACH/WORK/RETRACT를 한 단계씩 검사하는 디버그 기능입니다. 실제 V10의 PLC 계약은 여전히 **공정 위치 7개 START/DONE**입니다.
+> Preview의 `step_mode`는 내부 TRANSIT/APPROACH/WORK/RETRACT를 한 단계씩 검사하는 디버그 기능입니다. 실제 V10의 PLC 계약은 여전히 **공정 위치 7개 START/DONE**입니다.
 
 ## 현재 배포 파일
 
@@ -78,6 +81,8 @@ releases/
 - 프로그램 시작 시 DONE LOW 초기화: `PASS_STATIC`
 - 기존 `packing2` 이름 충돌 제거: `PASS`
 - Installation Variables 실제 `.variables` 파일 저장: `VERIFIED_ON_V9_DATA`
+- ROS Natural Motion Preview v0.2: `PARTIAL_PASS` (`P1~P4` IK 생성, P3 100 mm에서 BLOCKED)
+- ROS Natural Motion Preview v0.4 Performance Motion: `IMPLEMENTED / RUNTIME_NOT_VERIFIED`
 - 실제 V10 PolyScope parser acceptance: `NOT_VERIFIED`
 - 전원 재부팅 후 installation variable persistence: `NOT_VERIFIED`
 - 실제 V10 PLC handshake: `NOT_VERIFIED`
