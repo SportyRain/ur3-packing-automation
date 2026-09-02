@@ -56,7 +56,7 @@
 - 문제점: `HOME`, `APPROACH`, 실제 작업점, `RETRACT` 각각에 START/DONE이 들어가 한 사이클에 약 29회의 handshake를 요구
 - 사용자가 요구한 것은 보조 경로가 아니라 **실제 공정 위치마다 1회의 START/DONE**임을 재확인
 
-### V9 (현재)
+### V9
 
 - PLC handshake 단위를 **공정 위치 7개**로 수정
 - HOME / APPROACH / RETRACT는 UR 내부 경로로만 사용하고 별도 START/DONE 제거
@@ -69,11 +69,30 @@
 - 기존 `packing2`를 덮어쓰지 않도록 installation 이름을 `UR3_PACKING_V9`로 독립
 - V9 script handshake 구조 오프라인 검사: `PASS`
 - V9 URP/installation gzip XML 구조 검사: `PASS`
-- 실제 팬던트 parser/변수 persistence/PLC/실물 동작: `NOT_VERIFIED`
+- 사용자 제공 실제에 가까운 Installation Variables에서 HOME + 7개 작업점 + I/O 값이 실제 `.variables` 파일에 저장되는 것을 확인
+- P3 제품투입 local `-Z` 100 mm 접근점에서 실제 팬던트 `MOTION BLOCKED` 확인
 
-### ROS Natural Motion Preview v0.1~v0.3 (실물 전 시각 검증, V9와 분리)
+### V10 (현재)
 
-목적은 V9 URScript를 즉시 변경하는 것이 아니라, **실물 구동 전 ROS/RViz에서 자연스러운 자세와 접근/후퇴를 먼저 확인**하는 것입니다.
+- V9의 전체 구조는 유지하고 실제 데이터 검토에서 확인된 3개 항목만 최소 수정
+- `P3_PRODUCT_INSERT`의 접근/이탈 거리만 100 mm → **70 mm**로 변경
+- 나머지 작업점은 기존 `PACK_CLEARANCE=0.100 m` 유지
+- 7개 접근점 IK를 사이클 시작에 모두 선계산하지 않고 **각 공정 STEP 직전 해당 STEP만 검사**하도록 변경
+- 뒤쪽 STEP의 IK 문제가 P1 시작 전에 전체 사이클을 막지 않도록 수정
+- 저장된 I/O 설정이 유효하면 프로그램 시작 직후 `PACK_DO_POINT_DONE`을 LOW로 초기화
+- I/O 수정 후에도 새 DONE 출력에 LOW를 다시 적용
+- PLC 계약은 1사이클 정확히 7회 START/DONE으로 유지
+- HOME / APPROACH / RETRACT는 내부 경로로 유지
+- HOME 경유 MOVEJ / 작업점 주변 MOVEL / Standard Control Box DI/DO / `get_actual_joint_positions()` 유지
+- 사용자가 제공한 거의 실제 HOME + 7개 작업점 + I/O 값을 `UR3_PACKING_V10.variables`에 보존
+- 오프라인 7 START / 7 DONE 검사: `PASS`
+- URP/installation gzip XML parse: `PASS`
+- 실제 V10 PolyScope parser / PLC / 전체 모션: `NOT_VERIFIED`
+- V10 이전 실물 시험에서 관절 한계 또는 비정상 정지는 사용자 관찰상 `NOT_OBSERVED`
+
+### ROS Natural Motion Preview v0.1~v0.3 (실물 전 시각 검증, 생산 런타임과 분리)
+
+목적은 생산 URScript를 즉시 변경하는 것이 아니라, **실물 구동 전 ROS/RViz에서 자연스러운 자세와 접근/후퇴를 먼저 확인**하는 것입니다.
 
 확정 입력:
 
@@ -115,7 +134,7 @@ v0.3 수정:
 - v0.3 실제 Ubuntu 재실행: `NOT_VERIFIED`
 - 실제 UR3 motion: `NOT_ATTEMPTED`
 
-주의: preview의 `step_mode`는 APPROACH/WORK/RETRACT 단위 디버그용이며, **V9의 실제 PLC 공정 handshake 7회 계약을 변경하지 않습니다.**
+주의: preview의 `step_mode`는 APPROACH/WORK/RETRACT 단위 디버그용이며, **V10의 실제 PLC 공정 handshake 7회 계약을 변경하지 않습니다.**
 
 ## 주의
 
