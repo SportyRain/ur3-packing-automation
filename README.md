@@ -34,30 +34,56 @@ HOME/APPROACH/RETRACT는 공정 내부 경로이며 PLC 신호를 추가로 요�
 
 ## ROS Natural Motion Preview
 
-실물 구동 전 동작 확인을 위한 **ROS 2 Jazzy + MoveIt + RViz 전용 미리보기**를 별도로 보관합니다.
+실물 구동 전 동작 확인을 위한 **ROS 2 Jazzy + MoveIt + RViz 전용 미리보기**를 별도로 관리합니다.
 
 ```text
 ros/ur3_natural_motion_preview/
 ```
 
-- 현재 preview 버전: **v0.4.0**
-- 실제 V10 배포 로직을 대체하지 않음
-- URScript/RTDE/trajectory controller/robot IP 제어 경로 없음
-- 사용자 제공 8개 실제 관절 자세를 FK로 TCP pose로 복원
+현재 상태는 다음처럼 구분합니다.
+
+- canonical source: **v0.4.0**
+- 실제 ROS runtime 검증 완료 candidate: **v0.7.0**
+- 최신 구현 candidate: **v0.8.0 — Hybrid VIA + Wrist Coordination**
+- production V10 변경: 없음
+- 실제 UR3 command path: 없음
+
+공통 기준:
+
+- 사용자 제공 HOME + 공정점 7개 실제 관절 자세를 FK로 TCP pose로 복원
 - Ø20 × 80 mm 공압 흡착기, `tool0 +Z`, TCP `+80 mm`
 - V10 기준 clearance: `P3_PRODUCT_INSERT=70 mm`, 나머지 공정점 `100 mm`
 - 작업점 정지: 3초
-- 자세 선택: multi-seed IK + 관절 연속성/손목 회전/관절여유 score
-- v0.4 Performance Motion: 공정 사이 장거리 이동을 Cartesian cubic Bezier arc로 생성
-- 손목 orientation을 목표 위치보다 먼저 정렬하여 마지막 순간 wrist snap 억제
-- APPROACH/RETRACT는 Cartesian 직선 pose sample + continuous IK
-- `motion_style:=performance` / `motion_style:=baseline` 비교 가능
-- RViz `/preview/path`에 계획된 TCP path 표시
-- 실제 controller/servo 그래프와 섞이지 않도록 `ROS_DOMAIN_ID=77` 권장
+- 실제 controller/servo graph와 분리하기 위해 `ROS_DOMAIN_ID=77` 권장
 
-상세 상태와 런타임 기록은 [`docs/ROS_NATURAL_MOTION_PREVIEW.md`](docs/ROS_NATURAL_MOTION_PREVIEW.md)를 봅니다.
+### v0.7 실제 런타임 결과
 
-> Preview의 `step_mode`는 내부 TRANSIT/APPROACH/WORK/RETRACT를 한 단계씩 검사하는 디버그 기능입니다. 실제 V10의 PLC 계약은 여전히 **공정 위치 7개 START/DONE**입니다.
+- sequential IK branch propagation: `VERIFIED`
+- `IK_BRANCH_REPAIRED`: 실제 동작 확인
+- v0.6에서 검출된 P3 finished-pick wrist 급점프를 그대로 통과시키지 않도록 개선
+- P4_PRODUCT_PICK: show path 0.82 scale에서 연결
+- P3_PRODUCT_INSERT: show path 0.28 scale에서 연결
+- P3_FINISHED_BOX_PICK: Cartesian show route는 `BLOCKED_NO_IK`, preview-only direct fallback 사용
+- 해당 fallback은 J5 peak-to-peak 약 `152.2°`로 wrist motion 집중 문제가 남음
+- HOME_RETURN: soft joint envelope에서 Whole-body 취소
+
+### v0.8 candidate
+
+v0.8은 실패한 두 구간만 전용 경로로 보강합니다.
+
+- `P3_FINISHED_BOX_PICK`: `CLEARANCE VIA -> WRIST TRANSITION VIA -> PRE-PICK VIA -> 100 mm APPROACH`
+- fallback IK: 이전 q 연속성 + J4/J5/J6 과도 회전 억제 weighted score
+- `HOME_RETURN`: `UNWIND VIA -> HOME`
+- v0.7 branch continuity / joint-specific Whole-body 구조 유지
+- static/pure tests: `18 PASSED`
+- actual ROS runtime: `NOT_VERIFIED`
+
+상세 기록:
+
+- [`docs/version-notes/ROS_PREVIEW_V07_CONTINUOUS_WHOLE_BODY.md`](docs/version-notes/ROS_PREVIEW_V07_CONTINUOUS_WHOLE_BODY.md)
+- [`docs/version-notes/ROS_PREVIEW_V08_HYBRID_VIA_WRIST_COORDINATION.md`](docs/version-notes/ROS_PREVIEW_V08_HYBRID_VIA_WRIST_COORDINATION.md)
+
+> Preview 내부 TRANSIT/APPROACH/WORK/RETRACT/VIA는 디버그/경로 설계 개념입니다. 실제 V10의 PLC 계약은 여전히 **공정 위치 7개 START/DONE**입니다.
 
 ## 현재 배포 파일
 
@@ -81,8 +107,9 @@ releases/
 - 프로그램 시작 시 DONE LOW 초기화: `PASS_STATIC`
 - 기존 `packing2` 이름 충돌 제거: `PASS`
 - Installation Variables 실제 `.variables` 파일 저장: `VERIFIED_ON_V9_DATA`
-- ROS Natural Motion Preview v0.2: `PARTIAL_PASS` (`P1~P4` IK 생성, P3 100 mm에서 BLOCKED)
-- ROS Natural Motion Preview v0.4 Performance Motion: `IMPLEMENTED / RUNTIME_NOT_VERIFIED`
+- ROS Natural Motion Preview v0.2: `PARTIAL_PASS`
+- ROS Natural Motion Preview v0.7 Continuous Whole-Body runtime: `VERIFIED_WITH_REMAINING_ROUTE_LIMITATIONS`
+- ROS Natural Motion Preview v0.8 Hybrid VIA candidate: `IMPLEMENTED / 18_TESTS_PASS / RUNTIME_NOT_VERIFIED`
 - 실제 V10 PolyScope parser acceptance: `NOT_VERIFIED`
 - 전원 재부팅 후 installation variable persistence: `NOT_VERIFIED`
 - 실제 V10 PLC handshake: `NOT_VERIFIED`
