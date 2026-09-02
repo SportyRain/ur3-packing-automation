@@ -74,7 +74,7 @@ releases/
 - V9 URP/installation gzip XML 구조: `PASS`
 - 기존 `packing2` 이름 충돌 제거: `PASS`
 - ROS Natural Motion Preview v0.2 부분 런타임: `PARTIAL_PASS` (`P1~P4` IK 생성, `P3_PRODUCT_INSERT` 100 mm approach에서 BLOCKED)
-- ROS Natural Motion Preview v0.3: `IMPLEMED / RUNTIME_NOT_VERIFIED`
+- ROS Natural Motion Preview v0.3: `IMPLEMENTED / RUNTIME_NOT_VERIFIED`
 - 실제 PolyScope parser acceptance: `NOT_VERIFIED`
 - installation variable persistence: `NOT_VERIFIED`
 - 실제 PLC handshake: `NOT_VERIFIED`
