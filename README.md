@@ -26,10 +26,34 @@ UR3 CB3 / PolyScope 3.15.x 기반 개인용 포장 자동화 프로젝트입니�
 3. `P3_EMPTY_BOX_PLACE` — PLC 밑판 접기 완료 후 다음 START로 P2 이탈 및 빈 박스 배치
 4. `P4_PRODUCT_PICK` — 제품 상부 파지 후 안전 이탈
 5. `P3_PRODUCT_INSERT` — 제품 투입/해제 후 뚜껑 닫기 가능한 backoff까지 이동한 뒤 DONE
-6. `P3_FINISHED_BOX_PICK` — PLC 뚜껑 닫기 완료 후 다음 START로 완성 박스 측면 재파지
+6. `P3_FINISHED_BOX_PICK` — PLC 뚜껑 닫기 완료 후 다음 START로 완성 박스를 측면 재파지
 7. `P4_FINISHED_BOX_PLACE` — 완성 박스 배치/이탈/HOME 복귀 후 DONE
 
 따라서 V8처럼 HOME/APPROACH/RETRACT마다 PLC 신호를 요구하지 않습니다.
+
+## ROS Natural Motion Preview
+
+실물 구동 전 동작 확인을 위한 **ROS 2 Jazzy + MoveIt + RViz 전용 미리보기**를 별도로 보관합니다.
+
+```text
+ros/ur3_natural_motion_preview/
+```
+
+- 현재 preview 버전: **v0.3.0**
+- 실제 V9 배포 로직을 대체하지 않음
+- URScript/RTDE/trajectory controller/robot IP 제어 경로 없음
+- 사용자 제공 8개 실제 관절 자세를 FK로 TCP pose로 복원
+- Ø20 × 80 mm 공압 흡착기, `tool0 +Z`, TCP `+80 mm`
+- 각 작업점에서 TCP local `-Z` 방향 100 mm approach/retract 목표
+- 작업점 정지: 3초
+- 자세 선택: multi-seed IK + 관절 연속성/손목 회전/관절여유 score
+- v0.2 실측 런타임에서 `P3_PRODUCT_INSERT`의 exact 100 mm approach IK가 0개로 확인됨
+- v0.3은 **미리보기에서만** 95→40 mm까지 가장 긴 도달 가능한 직선 clearance를 탐색하고 명시적 경고
+- 실제 controller/servo 그래프와 섞이지 않도록 `ROS_DOMAIN_ID=77` 권장
+
+상세 상태와 런타임 기록은 [`docs/ROS_NATURAL_MOTION_PREVIEW.md`](docs/ROS_NATURAL_MOTION_PREVIEW.md)를 봅니다.
+
+> Preview의 `step_mode`는 APPROACH/WORK/RETRACT를 한 단계씩 검사하는 디버그 기능입니다. 실제 V9의 PLC 계약은 여전히 **공정 위치 7개 START/DONE**입니다.
 
 ## 현재 배포 파일
 
@@ -49,6 +73,8 @@ releases/
 - V9 script 논리/handshake 개수 오프라인 검사: `PASS`
 - V9 URP/installation gzip XML 구조: `PASS`
 - 기존 `packing2` 이름 충돌 제거: `PASS`
+- ROS Natural Motion Preview v0.2 부분 런타임: `PARTIAL_PASS` (`P1~P4` IK 생성, `P3_PRODUCT_INSERT` 100 mm approach에서 BLOCKED)
+- ROS Natural Motion Preview v0.3: `IMPLEMED / RUNTIME_NOT_VERIFIED`
 - 실제 PolyScope parser acceptance: `NOT_VERIFIED`
 - installation variable persistence: `NOT_VERIFIED`
 - 실제 PLC handshake: `NOT_VERIFIED`
